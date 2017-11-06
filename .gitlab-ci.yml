@@ -1,0 +1,10 @@
+image: docker:latest
+
+#services:
+#  - docker:dind
+
+before_script:
+
+build_image:
+  script:
+     - ./build_container.sh

@@ -1,0 +1,72 @@
+#!/bin/bash
+
+set -e
+
+file_env() {
+	local var="$1"
+	local fileVar="${var}_FILE"
+	local def="${2:-}"
+	if [ "${!var:-}" ] && [ "${!fileVar:-}" ]; then
+		echo >&2 "error: both $var and $fileVar are set (but are exclusive)"
+		exit 1
+	fi
+	local val="$def"
+	if [ "${!var:-}" ]; then
+		val="${!var}"
+	elif [ "${!fileVar:-}" ]; then
+		val="$(< "${!fileVar}")"
+	fi
+	export "$var"="$val"
+	unset "$fileVar"
+}
+
+file_env 'PIMCORE_INSTALL_FROM_SCRATCH'
+if [ $PIMCORE_INSTALL_FROM_SCRATCH == "1" ]; then
+    file_env 'WEB_ADMIN_USERNAME'
+    file_env 'WEB_ADMIN_PASSWORD'
+    file_env 'MYSQL_USER'
+    file_env 'MYSQL_PASSWORD'
+    file_env 'MYSQL_DATABASE'
+
+
+    # Php warning - Consider using the interactive prompt or the PIMCORE_INSTALL_ADMIN_USERNAME environment variable instead.
+    #PIMCORE_INSTALL_ADMIN_USERNAME=$WEB_ADMIN_USERNAME
+    #PIMCORE_INSTALL_ADMIN_PASSWORD=$WEB_ADMIN_PASSWORD
+    #PIMCORE_INSTALL_MYSQL_USERNAME=$MYSQL_USER
+    #PIMCORE_INSTALL_MYSQL_PASSWORD=$MYSQL_PASSWORD
+
+    #php PIMCORE_INSTALL_MYSQL_USERNAME=username PIMCORE_INSTALL_MYSQL_PASSWORD=password bin/install --profile demo-basic \
+    #  --admin-username admin --admin-password admin \
+    #  --mysql-database $MYSQL_DATABASE \
+    #  --no-interaction
+
+    # Sleep until mysql is ready to connect
+    sleep 5
+
+    # Set memory limit to 256Mb
+    #echo "memory_limit = 256M" >> /etc/php/7.0/apache2/php.ini
+    # Docs: https://pimcore.com/docs/5.0.x/Getting_Started/Installation.html
+    # use demo-basic instead of empty to install a demo pimcore project
+    php7.0 --php-ini /etc/php/7.0/apache2/php.ini bin/install --profile empty --admin-username $WEB_ADMIN_USERNAME --admin-password $WEB_ADMIN_PASSWORD --mysql-host-socket db --mysql-username $MYSQL_USER --mysql-password $MYSQL_PASSWORD --mysql-database $MYSQL_DATABASE --no-interaction --ignore-existing-config
+
+    # ./ is the workdir
+    echo "Setting chmod and chown. Please wait..."
+    chmod -R 775 ./
+    chown -R www-data:www-data ./
+
+    if [ -f "/web/install.php" ]; then
+        echo "Deleting install.php"
+        rm web/install.php
+    fi
+
+    echo "Done"
+else
+    echo "Not installing pimcore from scratch because of env var PIMCORE_INSTALL_FROM_SCRATCH=0"
+fi
+
+# first arg is `-f` or `--some-option`
+if [ "${1#-}" != "$1" ]; then
+	set -- php "$@"
+fi
+
+exec "$@"

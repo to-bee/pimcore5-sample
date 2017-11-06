@@ -1,0 +1,29 @@
+version: '3.1'
+
+services:
+  db:
+    restart: always
+    build:
+      context: ./db
+      dockerfile: Dockerfile
+    env_file: .env
+#    volumes:
+#          - ./db/mysql:/var/lib/mysql
+    expose:
+      - 3306
+  web:
+    restart: always
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    env_file: .env
+    volumes: # from,to
+#      - /path/to/save/assets:/var/www/html/web/var/assets/
+      - ./web/src/:/var/www/html
+    ports:
+      - "80:80" #from, to
+    depends_on:
+      - db
+    links:
+      - db
+

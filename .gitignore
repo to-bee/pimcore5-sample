@@ -1,0 +1,7 @@
+# Created by .ignore support plugin (hsz.mobi)
+pimcore-stable.zip
+cache/**
+logs/**
+recyclebin/**
+tmp/**
+.idea/
